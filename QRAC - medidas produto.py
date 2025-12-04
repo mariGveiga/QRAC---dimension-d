@@ -23,26 +23,6 @@ def create_hadamard(d):
 hadamard_4 = create_hadamard(4)
 hadamard_2 = create_hadamard(2)
 
-def create_operator(M1, M2):
-    M = np.zeros((2, N*N), dtype=object)
-    
-    x0=0
-    for beta0 in range(d1): 
-        for beta0_ in range(d2):
-            x1=0
-
-            for beta1 in range(d1):
-                for beta1_ in range(d2):
-                    
-                    # --- produto tensorial para formar os operadores de medida do sistema composto ---
-                    M[0,x0] = qt.tensor(M1[0,beta0], M2[0,beta0_])
-                    M[1,x1] = qt.tensor(M1[1,beta1], M2[1,beta1_])
-                    
-                    x1+=1
-            x0+=1
-        
-    return M
-
 # ---- criação das bases de medida ----
 
 # Lists for first phase
@@ -165,48 +145,3 @@ for j in range(N*N):
     print(f"M[1][{j}] =")
     print(np.round(M[1][j].full(),2))
 
-"""
-From now on we optimize the measurement using the optimized states (RHO) from the first phase as input
-"""
-# M1_2 deve ter tamanho baseado nas dimensões dos subsistemas, não em N ou d global
-# Assumindo d1 = d2 = 2
-M1_2 = np.zeros((2, d1), dtype=object)
-M_2 = np.zeros((2, N*N), dtype=object)
-F1 = pc.Problem()
-
-# Defining the measurements.
-for i in range(d1): 
-    # Base 0 (decodificar x0)
-    # Correção no nome: f"M1_2_0_{i}" (0 indicando a primeira linha/base)
-    M1_2[0,i] = pc.HermitianVariable(f"M1_2_x0_{i}", (d1, d1)) 
-    F1.add_constraint(M1_2[0,i] >> 0)
-    
-    # Base 1 (decodificar x1)
-    M1_2[1,i] = pc.HermitianVariable(f"M1_2_x1_{i}", (d2, d2)) 
-    F1.add_constraint(M1_2[1,i] >> 0)
-
-# Constraint to that the projectors of M1_2 form a complete basis.   
-F1.add_constraint(sum(M1_2[0,i] for i in range(d1)) == np.eye(d1))
-F1.add_constraint(sum(M1_2[1,i] for i in range(d1)) == np.eye(d2))
-
-Success1 = 0 # Optimization variable
-for x0 in range(d1):
-    for x1 in range(d2):
-        # Creating the measurement operators for the composed system
-        M1_opt = qt.tensor(qt.Qobj(M1_2[0,x0].value), qt.Qobj(np.eye(d2)))  # Measurement operator for x0
-        M2_opt = qt.tensor(qt.Qobj(np.eye(d1)), qt.Qobj(M1_2[1,x1].value))  # Measurement operator for x1
-        # --- produto tensorial para formar os operadores de medida do sistema composto ---
-        M_2[0,x0] = qt.tensor(M1[0,beta0], M2[0,beta0_])
-        M_2[1,x1] = qt.tensor(M1[1,beta1], M2[1,beta1_])
-
-        # Success definition
-        term1 = pc.trace(M1_opt.full() * SIGMA[x0][x1])
-        term2 = pc.trace(M2_opt.full() * SIGMA[x0][x1])
-        
-        Success1 += fatorNormalizacao * (np.real(term1) + np.real(term2))
-
-F1.set_objective("max", Success1)
-F1.solve(solver = "cvxopt")
-S1=F1.value
-
-print("Success_Measure_Opt = ",S1)
