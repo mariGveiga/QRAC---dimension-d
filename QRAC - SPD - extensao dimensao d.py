@@ -172,9 +172,9 @@ for i in range(d1):
     M1_2[1,i] = pc.HermitianVariable(f"M1_2_x1_{i}", (d1, d1)) # Attention: subsystem 1 has dimension d1
     F1.add_constraint(M1_2[1,i] >> 0)
 
-# Completeness Relation (Sum of projectors must be Identity)
-F1.add_constraint(sum(M1_2[0,i] for i in range(d1)) == np.eye(d1))
-F1.add_constraint(sum(M1_2[1,i] for i in range(d1)) == np.eye(d1))
+# # Completeness Relation (Sum of projectors must be Identity)
+F1.add_constraint(sum(M1_2[0,i] for i in range(d1)) - np.eye(d1) << 1e-8*np.eye(d1))
+F1.add_constraint(sum(M1_2[1,i] for i in range(d1)) - np.eye(d1) << 1e-8*np.eye(d1))
 
 # Create joint operator (M1_2 is Variable, M2 is Fixed from initialization)
 M_2 = create_operator_optimization(M1_2, M2)
@@ -216,8 +216,8 @@ for i in range(d2):
     F2.add_constraint(M2_2[1,i] >> 0)
 
 # Completeness relation for M2
-F2.add_constraint(sum(M2_2[0,i] for i in range(d2)) == np.eye(d2))
-F2.add_constraint(sum(M2_2[1,i] for i in range(d2)) == np.eye(d2))
+F2.add_constraint(sum(M2_2[0,i] for i in range(d2)) - np.eye(d2) << 1e-8*np.eye(d2))
+F2.add_constraint(sum(M2_2[1,i] for i in range(d2)) - np.eye(d2) << 1e-8*np.eye(d2))
 
 # Create joint operator (M1_optimal is Fixed, M2_2 is Variable)
 M_3 = create_operator_optimization(M1_optimal_values, M2_2)
