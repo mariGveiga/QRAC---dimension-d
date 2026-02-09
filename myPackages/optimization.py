@@ -3,34 +3,11 @@ import numpy as np # Standard math lib
 import qutip as qt # Quantum Mechanics Lib
 from myPackages.creation import create_operator_optimization
 
-def clean_matrix(M):
-    # Transforms any type of matrix into a numpy array of complex numbers (cleans it for optimization)
-    if hasattr(M, 'full'):
-        M = M.full()
-    if hasattr(M, 'value'):
-        M = M.value
-
-    M_clean = [[None for _ in range(len(M))] for _ in range(len(M[0]))]
-    for r in range(len(M)):
-        for c in range(len(M[0])):
-            element = M[r][c]
-            
-            # Caso 1: É uma variável do PICOS resolvida
-            if hasattr(element, 'value'):
-                element = element.value
-            
-            # Caso 2: É um objeto QuTiP
-            if hasattr(element, 'full'):
-                element = element.full()
-            
-            # Caso 3: Garante que é um array numpy de complexos
-            M_clean[r][c] = np.array(element, dtype=complex)
-
-    return np.array(M_clean)
-
 '''
 PHASE 1: Optimize the states, assuming fixed measurements (Computational and Fourier basis)
 '''
+
+'''Assuming non-local states -- has quantum correlations between subsystems'''
 
 def optimize_NonLocalStates(sigma, M, D, fatorNormalizacao, Pc):
     # OPTIMIZATION FOR THE STATE
@@ -56,8 +33,8 @@ def optimize_NonLocalStates(sigma, M, D, fatorNormalizacao, Pc):
 
     # Our goal: maximize Success
     F.set_objective("max", Success)
+    
     try:
-        #solver_params = {'primalfactor_tol': 1e-12} # Opcional, dependendo da versão
         F.solve(solver="cvxopt")
     except Exception as e:
         print(f"Erro na otimização: {e}")
@@ -74,6 +51,9 @@ def optimize_NonLocalStates(sigma, M, D, fatorNormalizacao, Pc):
             SIGMA[x0][x1]=(np.array(sigma[x0][x1].value))
 
     return SIGMA, S
+
+'''Assuming local states -- no quantum correlations between subsystems'''
+
 
 def optimize_LocalStates(sigma_fixed, M, d, fatorNormalizacao, subsystem_target):
     D = d**2
@@ -96,25 +76,29 @@ def optimize_LocalStates(sigma_fixed, M, d, fatorNormalizacao, subsystem_target)
 
             # Verifies if sigma_fixed elements are Qobj and converts to numpy if necessary
             # hasattr checks if the object has the attribute 'full'
-            if hasattr(sigma_fixed[idx_0][idx_1], 'full'): 
-                sigma_fixed[idx_0][x1] = sigma_fixed[idx_0][x1].full()
+            fixed_part = sigma_fixed[idx_0][idx_1]
+            if hasattr(fixed_part, 'full'): fixed_part = fixed_part.full()
+            elif hasattr(fixed_part, 'value'): fixed_part = fixed_part.value
+            fixed_part = np.array(fixed_part, dtype=complex) # ensure it's a numpy array
 
             if subsystem_target == 1:
                 # Optimizing sigma0_1 (Variable), fixing sigma0_2 (Constant)
                 # sigma = sigma0_1 (x) sigma0_2
-                sigma[x0][x1] = pc.kron(sigma_opt[idx_0][idx_1], sigma_fixed[idx_0][idx_1])
+                sigma[x0][x1] = pc.kron(sigma_opt[idx_0][idx_1], pc.Constant(fixed_part))
             else:
                 # Optimizing sigma0_2 (Variable), fixing sigma0_1 (Constant)
                 # sigma = sigma0_1 (x) sigma0_2
-                sigma[x0][x1] = pc.kron(sigma_fixed[idx_0][idx_1], sigma_opt[idx_0][idx_1])
-            
+                sigma[x0][x1] = pc.kron(pc.Constant(fixed_part), sigma_opt[idx_0][idx_1])
 
-            Op_Comp = clean_matrix(M[0, idx_0])
-            Op_Four = clean_matrix(M[1, idx_1])
+            # Ensure M elements are numpy arrays for the trace calculation -- picos may not handle Qobj directly
+            op_comp_val = M[0, x0]
+            if hasattr(op_comp_val, 'value'): op_comp_val = op_comp_val.value
             
-            term1 = pc.trace(pc.Constant(Op_Comp) * sigma[x0][x1])
-            term2 = pc.trace(pc.Constant(Op_Four) * sigma[x0][x1])
-
+            op_four_val = M[1, x1]
+            if hasattr(op_four_val, 'value'): op_four_val = op_four_val.value
+            
+            term1 = pc.trace(pc.Constant(op_comp_val) * sigma[x0][x1])
+            term2 = pc.trace(pc.Constant(op_four_val) * sigma[x0][x1])
             # Success formula -- Born's rule
             Success += fatorNormalizacao * (np.real(term1) + np.real(term2)) 
 
@@ -122,11 +106,10 @@ def optimize_LocalStates(sigma_fixed, M, d, fatorNormalizacao, subsystem_target)
     F.set_objective("max", Success)
 
     try:
-        #solver_params = {'primalfactor_tol': 1e-12} # Opcional, dependendo da versão
         F.solve(solver="cvxopt")
     except Exception as e:
         print(f"Erro na otimização: {e}")
-        return None, 0
+        return None, None, 0
 
     S = F.value
     
@@ -135,8 +118,19 @@ def optimize_LocalStates(sigma_fixed, M, d, fatorNormalizacao, subsystem_target)
         for x1 in range(d):
             sigma_optimal_values[x0][x1] = np.array(sigma_opt[x0][x1].value)
             
-    return sigma, sigma_optimal_values, S
+    sigma_full_numeric = np.zeros((D, D), dtype=object)
+    for x0 in range(D):
+        for x1 in range(D):
+            # extracts the optimized sigma values for the full joint state (after optimization, sigma is expressed in terms of the optimized local states)
+            sigma_full_numeric[x0][x1] = np.array(sigma[x0][x1].value)
 
+    return sigma_full_numeric, sigma_optimal_values, S
+
+'''
+PHASE 2: Optimize Measurement 1 (M_opt), fixing State (SIGMA) and Measurement 2 (M_fixed)
+'''
+
+'''Assuming local states -- no quantum correlations between subsystems'''
 def optimize_LocalMeasurements(M_fixed, sigma, fatorNormalizacao, d, D, N):
     """
     PHASE 2: Optimize Measurement 1 (M_fixed), fixing State (SIGMA) and Measurement 2 (M_opt)
@@ -167,31 +161,28 @@ def optimize_LocalMeasurements(M_fixed, sigma, fatorNormalizacao, d, D, N):
             # hasattr checks if the object has the attribute 'full'
             if hasattr(sigma[x0][x1], 'full'): 
                 sigma[x0][x1] = sigma[x0][x1].full()
+
             # M_final[0, x0] is the joint operator for answer x0
 
-            Op_Comp = clean_matrix(M_final[0, x0])
-            Op_Four = clean_matrix(M_final[1, x1])
-
-            term1 = pc.trace(pc.Constant(Op_Comp) * sigma[x0][x1])
-            term2 = pc.trace(pc.Constant(Op_Four) * sigma[x0][x1])
+            term1 = pc.trace(M_final[0, x0] * sigma[x0][x1])
+            term2 = pc.trace(M_final[1, x1] * sigma[x0][x1])
 
             # Using .real to ensure compatibility with solver
             Success1 += fatorNormalizacao * (term1.real + term2.real)
 
     F.set_objective("max", Success1)
     try:
-        #solver_params = {'primalfactor_tol': 1e-12} # Opcional, dependendo da versão
         F.solve(solver="cvxopt")
     except Exception as e:
         print(f"Erro na otimização: {e}")
-        return None, 0
+        return None, None, 0
+    
     S = F.value
 
     # Recovering numerical values after solving
     M_optimal_values = np.zeros((N, d), dtype=object)
     for r in range(N):
         for c in range(d):
-            M_optimal_values[r,c] = qt.Qobj(M_opt[r,c].value)
+            M_optimal_values[r,c] = qt.Qobj(np.array(M_opt[r,c].value))
     
-
     return M_final, M_optimal_values, S
