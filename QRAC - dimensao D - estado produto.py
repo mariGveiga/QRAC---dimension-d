@@ -19,22 +19,34 @@ def main():
     hadamard_d2 = cs.create_hadamard(d)
 
     # ---- Creation of Measurement Bases ----
-
     sigma0, sigma0_1, sigma0_2, Comp_basis, Fourrier_basis = cs.createLocalStates(d, D, hadamard_d2)
-    # Creation of system measurement operators
+
+    # ---- Creation of system measurement operators ----
     M1, M2, M = cs.createMeasurementOperators(d, D, Fourrier_basis, N)
 
-    sigma_global_, SIGMA1_OPT, S = opt.optimize_LocalStates(sigma0_2, M, d, fatorNormalizacao, 1)
-    print("Success_SIGMA_opt = ",S) 
+    # see-saw algorithm
+    tolerance = 1e-6
+    t_max = 50
 
-    SIGMA, SIGMA2_OPT, S1 = opt.optimize_LocalStates(SIGMA1_OPT, M, d, fatorNormalizacao, 2)
-    print("Success_SIGMA_opt = ",S1) 
+    St_inicial = 0
+    M_fixed = M2
+    sigma = sigma0
+    
+    for t in range(t_max):
+        M_inicial, M1_optimal_values, S = opt.optimize_LocalMeasurements(M_fixed, sigma, fatorNormalizacao, d, D, N)
+        M_final, M2_optimal_values, S1 = opt.optimize_LocalMeasurements(M1_optimal_values, sigma, fatorNormalizacao, d, D, N)
+        sigma_inicial, sigma1_opt, S2 = opt.optimize_LocalStates(sigma0_2, M_final, d, fatorNormalizacao, 1)
+        sigma_final, sigma2_opt, S_final = opt.optimize_LocalStates(sigma1_opt, M_final, d, fatorNormalizacao, 2)
 
-    M1_optimal_values, S1 = opt.optimize_LocalMeasurements(M2, SIGMA, fatorNormalizacao, d, D, N)
-    print("Success_Measure_Opt_Phase2 = ", S1)
+        print(f"Iteration {t+1}: Total Success = {S_final}")
 
-    M2_optimal_values, S2 = opt.optimize_LocalMeasurements(M1_optimal_values, SIGMA, fatorNormalizacao, d, D, N)
-    print("Success_Measure_Opt_Phase3 = ", S2)
+        if t > 0 and abs(S_final - St_inicial) <= tolerance:
+            print("Convergence reached.")
+            break
+        
+        M_fixed = M2_optimal_values
+        sigma = sigma_final
+        St_inicial = S_final
 
 if __name__ == "__main__":
     main()
