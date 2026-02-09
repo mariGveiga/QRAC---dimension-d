@@ -1,5 +1,6 @@
 import numpy as np # Standard math lib
 import qutip as qt # Quantum Mechanics Lib
+import picos as pc # Optimization lib
 
 # ---- Creation of the Hadamard Matrix ----
 def create_hadamard(dim):
@@ -125,7 +126,7 @@ def createMeasurementOperators(d, D, Fourrier_basis, N):
 # Creation of measurement operators for optimization (PICOS variables)
 def create_operator_optimization(M1, M2, d, D, N):
     # Resulting matrix of PICOS expressions (for the joint system)
-    M = np.zeros((N, D), dtype=object)
+    M = np.zeros((N, D), dtype=object)      
     
     x0 = 0
     for beta0 in range(d): 
@@ -144,7 +145,6 @@ def create_operator_optimization(M1, M2, d, D, N):
                     elif isinstance(term_1, qt.Qobj): term_1 = term_1.full()
                     
                     # Tensor product for base 0 (beta)
-                    # Uses '@' or 'pc.kron' implicitly via numpy object handling or explicit variable multiplication
                     M[0, x0] = term_1 @ term_2                    
                     
                     term_1_b1 = M1[1, beta1]
@@ -159,5 +159,4 @@ def create_operator_optimization(M1, M2, d, D, N):
                     
                     x1 += 1
             x0 += 1
-            
     return M
