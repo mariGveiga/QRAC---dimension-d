@@ -1,5 +1,7 @@
 import myPackages.creation as cs
 import myPackages.optimization as opt
+import numpy as np
+import qutip as qt
 
 '''
 O que eu quero fazer?
@@ -23,30 +25,64 @@ def main():
 
     # ---- Creation of system measurement operators ----
     M1, M2, M = cs.createMeasurementOperators(d, D, Fourrier_basis, N)
-
+    Pq = 1/2 *(1 + 1/np.sqrt(D)) # Quantum probability of success limit for d=2
     # see-saw algorithm
-    tolerance = 1e-6
+    tolerance = 1e-6        # até o 11
     t_max = 50
 
     St_inicial = 0
     M_fixed = M2
     sigma = sigma0
+    # print(sigma0_2)
     
+    print("Quantum Probability (ideal case):", Pq)
+    print("Classical Probability (ideal case):", Pc)
+
     for t in range(t_max):
-        M_inicial, M1_optimal_values, S = opt.optimize_LocalMeasurements(M_fixed, sigma, fatorNormalizacao, d, D, N)
-        M_final, M2_optimal_values, S1 = opt.optimize_LocalMeasurements(M1_optimal_values, sigma, fatorNormalizacao, d, D, N)
+        M_inicial, M1_optimal_values, S = opt.optimize_LocalMeasurements(M_fixed, sigma, fatorNormalizacao, d, D, N, 1)
+        # M_inicial = M1_optimal_values (optimized) and M2 (fixed) -- sigma fixo
+        M_final, M2_optimal_values, S1 = opt.optimize_LocalMeasurements(M1_optimal_values, sigma, fatorNormalizacao, d, D, N, 2)
+        # M_final = M1_optimal_values (optimized) and M2_optimal_values (optimized) -- sigma fixo
         sigma_inicial, sigma1_opt, S2 = opt.optimize_LocalStates(sigma0_2, M_final, d, fatorNormalizacao, 1)
+        # sigma_inicial = sigma1_opt (optimized) and sigma0_2 (fixed)
         sigma_final, sigma2_opt, S_final = opt.optimize_LocalStates(sigma1_opt, M_final, d, fatorNormalizacao, 2)
+        # sigma_final = sigma1_opt (optimized) and sigma2_opt (optimized)
 
         print(f"Iteration {t+1}: Total Success = {S_final}")
+        # S_final final da iteração t, otimizado em relação a M1, M2, sigma1 e sigma2
+        # print(sigma0_2)
 
         if t > 0 and abs(S_final - St_inicial) <= tolerance:
             print("Convergence reached.")
+
+            for x0 in range(D):
+                for x1 in range(D):
+                    rho = qt.Qobj(sigma_final[x0][x1], dims=[[d,d], [d,d]])  # Convert to Qobj for qutip functions
+                    rho_p = qt.ptrace(rho, 0)  # Partial trace over subsystem 1
+                    if (1-(rho_p * rho_p).tr() > tolerance):  # Trace of rho^2 for purity check
+                        # x0=x1=D-1  # Break out of both loops if convergence is not to a local state
+                        print("The program was not able to converge to a local state.")
+                        break
+
+                    m = qt.Qobj(M_final[1, x1], dims=[[d,d], [d,d]])  # Measurement operator for x0
+                    m_p = qt.ptrace(m, 0)  # Partial trace over subsystem 1
+                    if (1-(m_p * m_p).tr() > tolerance):  # Trace of m^2 for measurement check
+                        print("The program was not able to converge to a local measurement operator.")
+                        break
+                        # x0=x1=D-1  # Break out of both loops if convergence is not to a local state
+
             break
         
         M_fixed = M2_optimal_values
+        sigma0_2 = sigma2_opt
         sigma = sigma_final
         St_inicial = S_final
 
+
 if __name__ == "__main__":
     main()
+
+"""
+tr parcial 
+tr de rho_parcial ^2
+"""
