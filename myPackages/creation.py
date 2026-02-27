@@ -1,5 +1,6 @@
 import numpy as np # Standard math lib
 import qutip as qt # Quantum Mechanics Lib
+import picos as pc # Optimization lib
 
 # ---- Creation of the Hadamard Matrix ----
 def create_hadamard(dim):
@@ -122,10 +123,37 @@ def createMeasurementOperators(d, D, Fourrier_basis, N):
 
     return M1, M2, M
 
+def inspect_matrix_elements(M, N, D):
+    print(f"--- Inspecionando Matriz M ({N}x{D}) ---")
+    for r in range(N):
+        for c in range(D):
+            item = M[r, c]
+            print(f"\nItem [{r}, {c}]:")
+            
+            # Caso 1: É uma variável do PICOS
+            if hasattr(item, 'value'):
+                if item.value is None:
+                    print(f"  Tipo: Variável PICOS (Não resolvida)")
+                    print(f"  Nome/String: {item}")
+                    print(f"  Shape: {item.shape}")
+                else:
+                    print(f"  Tipo: Variável PICOS (Resolvida)")
+                    print(f"  Valor:\n{item.value}")
+            
+            # Caso 2: É um Qobj do QuTiP
+            elif hasattr(item, 'full'):
+                print(f"  Tipo: Qobj")
+                print(f"  Valor:\n{item.full()}")
+                
+            # Caso 3: É um array Numpy ou número
+            else:
+                print(f"  Tipo: {type(item)}")
+                print(f"  Valor:\n{item}")
+
 # Creation of measurement operators for optimization (PICOS variables)
-def create_operator_optimization(M1, M2, d, D, N):
+def create_operator_optimization(M1, M2, d, D, N, subsystem_target):
     # Resulting matrix of PICOS expressions (for the joint system)
-    M = np.zeros((N, D), dtype=object)
+    M = np.zeros((N, D), dtype=object)      
     
     x0 = 0
     for beta0 in range(d): 
@@ -142,11 +170,7 @@ def create_operator_optimization(M1, M2, d, D, N):
                     # This is crucial because PICOS cannot multiply variables by Qobj directly
                     if isinstance(term_2, qt.Qobj): term_2 = term_2.full()
                     elif isinstance(term_1, qt.Qobj): term_1 = term_1.full()
-                    
-                    # Tensor product for base 0 (beta)
-                    # Uses '@' or 'pc.kron' implicitly via numpy object handling or explicit variable multiplication
-                    M[0, x0] = term_1 @ term_2                    
-                    
+                    # print(M[0, x0])  # Debug: Check the structure of M[0, x0]
                     term_1_b1 = M1[1, beta1]
                     term_2_b1 = M2[1, beta1_]
                     
@@ -154,10 +178,16 @@ def create_operator_optimization(M1, M2, d, D, N):
                     if isinstance(term_2_b1, qt.Qobj): term_2_b1 = term_2_b1.full()
                     elif isinstance(term_1_b1, qt.Qobj): term_1_b1 = term_1_b1.full()
                     
-                    # Tensor product for base 1 (beta_)
-                    M[1, x1] = term_1_b1 @ term_2_b1
-                    
+                    if (subsystem_target == 1):
+                        # Tensor product for base 0 (beta)
+                        M[0, x0] = pc.kron(term_1, term_2)                    
+                        # Tensor product for base 1 (beta_)
+                        M[1, x1] = pc.kron(term_1_b1, term_2_b1)
+                    elif (subsystem_target == 2):
+                        M[0, x0] = pc.kron(term_2, term_1)                    
+                        M[1, x1] = pc.kron(term_2_b1, term_1_b1)
+
+                    # print(M[1, x1])  # Debug: Check the structure of M[1, x1]
                     x1 += 1
             x0 += 1
-            
     return M

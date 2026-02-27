@@ -80,6 +80,7 @@ def optimize_LocalStates(sigma_fixed, M, d, fatorNormalizacao, subsystem_target)
             if hasattr(fixed_part, 'full'): fixed_part = fixed_part.full()
             elif hasattr(fixed_part, 'value'): fixed_part = fixed_part.value
             fixed_part = np.array(fixed_part, dtype=complex) # ensure it's a numpy array
+            # print(f"Fixed part (before conversion): {np.round(fixed_part,3)}")  # Debug: Check the structure of fixed_part
 
             if subsystem_target == 1:
                 # Optimizing sigma0_1 (Variable), fixing sigma0_2 (Constant)
@@ -131,9 +132,9 @@ PHASE 2: Optimize Measurement 1 (M_opt), fixing State (SIGMA) and Measurement 2 
 '''
 
 '''Assuming local states -- no quantum correlations between subsystems'''
-def optimize_LocalMeasurements(M_fixed, sigma, fatorNormalizacao, d, D, N):
+def optimize_LocalMeasurements(M_fixed, sigma, fatorNormalizacao, d, D, N, subsystem_target):
     """
-    PHASE 2: Optimize Measurement 1 (M_fixed), fixing State (SIGMA) and Measurement 2 (M_opt)
+    PHASE 2: Optimize Measurement 1 (M_opt), fixing State (SIGMA) and Measurement 2 (M_fixed)
     """
     M_opt = np.zeros((N, d), dtype=object)  # matrix that will be optimized 
     F = pc.Problem()
@@ -152,7 +153,9 @@ def optimize_LocalMeasurements(M_fixed, sigma, fatorNormalizacao, d, D, N):
     F.add_constraint(sum(M_opt[1,i] for i in range(d)) == np.eye(d))
 
     # Create joint operator (M_opt is Variable, M_fixed is Fixed from initialization)
-    M_final = create_operator_optimization(M_opt, M_fixed, d, D, N)
+    M_final = create_operator_optimization(M_opt, M_fixed, d, D, N, subsystem_target)
+
+    # print("M_final:", M_final[0])  # Debug: Check the structure of M_final
     Success1 = 0 
 
     for x0 in range(D):
@@ -166,7 +169,7 @@ def optimize_LocalMeasurements(M_fixed, sigma, fatorNormalizacao, d, D, N):
 
             term1 = pc.trace(M_final[0, x0] * sigma[x0][x1])
             term2 = pc.trace(M_final[1, x1] * sigma[x0][x1])
-
+            
             # Using .real to ensure compatibility with solver
             Success1 += fatorNormalizacao * (term1.real + term2.real)
 
