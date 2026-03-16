@@ -33,7 +33,6 @@ def main():
     St_inicial = 0
     M_fixed = M2
     sigma = sigma0
-    # print(sigma0_2)
     
     print("Quantum Probability (ideal case):", Pq)
     print("Classical Probability (ideal case):", Pc)
@@ -50,10 +49,17 @@ def main():
 
         print(f"Iteration {t+1}: Total Success = {S_final}")
         # S_final final da iteração t, otimizado em relação a M1, M2, sigma1 e sigma2
-        # print(sigma0_2)
 
         if t > 0 and abs(S_final - St_inicial) <= tolerance:
             print("Convergence reached.")
+            
+            # Debug: Inspect the structures of the optimized variables
+            cs.inspect_matrix_elements(sigma_final, D, D, "sigma_final")  
+            cs.inspect_matrix_elements(sigma2_opt, d, d, "sigma2_opt")  
+            cs.inspect_matrix_elements(sigma1_opt, d, d, "sigma1_opt")  
+            cs.inspect_matrix_elements(M_final, N, D, "M_final")
+            cs.inspect_matrix_elements(M2_optimal_values, N, d, "M2_optimal_values") 
+            cs.inspect_matrix_elements(M1_optimal_values, N, d, "M1_optimal_values")
 
             for x0 in range(D):
                 for x1 in range(D):
@@ -64,7 +70,7 @@ def main():
                         print("The program was not able to converge to a local state.")
                         break
 
-                    m = qt.Qobj(M_final[1, x1], dims=[[d,d], [d,d]])  # Measurement operator for x0
+                    m = qt.Qobj(M_final[1, x1], dims=[[d,d], [d,d]])  # Measurement operator
                     m_p = qt.ptrace(m, 0)  # Partial trace over subsystem 1
                     if (1-(m_p * m_p).tr() > tolerance):  # Trace of m^2 for measurement check
                         print("The program was not able to converge to a local measurement operator.")
