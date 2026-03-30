@@ -123,71 +123,55 @@ def createMeasurementOperators(d, D, Fourrier_basis, N):
 
     return M1, M2, M
 
-def inspect_matrix_elements(M, N, D):
-    print(f"--- Inspecionando Matriz M ({N}x{D}) ---")
+# Creation of measurement operators for optimization (PICOS variables)
+def create_operator_optimization(M1, M2, d, D, N, subsystem_target):
+    # Resulting matrix of PICOS expressions (for the joint system)
+    M = np.zeros((N, D), dtype=object)      
+    for x in range(N):
+        x_i = 0
+        for beta in range(d):
+            for beta_ in range(d):
+                
+                term_1 = M1[x,beta]
+                term_2 = M2[x,beta_]
+
+                # Check if terms are Qobj and convert them to numpy arrays if necessary
+                # This is crucial because PICOS cannot multiply variables by Qobj directly
+                if isinstance(term_2, qt.Qobj): term_2 = term_2.full()
+                elif isinstance(term_1, qt.Qobj): term_1 = term_1.full()
+                
+                if subsystem_target == 1:
+                    M[x,x_i] = pc.kron(term_1, term_2)  # Optimize subsystem 1
+                elif subsystem_target == 2:
+                    M[x,x_i] = pc.kron(term_2, term_1)  # Optimize subsystem 2
+                x_i+=1
+    return M
+
+
+# Inspection function for debugging purposes
+def inspect_matrix_elements(M, N, D, name):
+    print(f"\n--- Inspecting Matrix {name} ({N}x{D}) ---")
     for r in range(N):
         for c in range(D):
             item = M[r, c]
             print(f"\nItem [{r}, {c}]:")
             
-            # Caso 1: É uma variável do PICOS
+            # Case 1: Is a PICOS variable (has 'value' attribute)
             if hasattr(item, 'value'):
                 if item.value is None:
-                    print(f"  Tipo: Variável PICOS (Não resolvida)")
-                    print(f"  Nome/String: {item}")
-                    print(f"  Shape: {item.shape}")
+                    print(f"  Type: PICOS variable (Não resolvida)")
+                    print(f"  Name/String: {np.round(item,2)}")
+                    # print(f"  Shape: {item.shape}")
                 else:
-                    print(f"  Tipo: Variável PICOS (Resolvida)")
-                    print(f"  Valor:\n{item.value}")
+                    print(f"  Type: PICOS variable (Resolvida)")
+                    print(f"  Value:\n{np.round(item.value,2)}")
             
-            # Caso 2: É um Qobj do QuTiP
+            # Case 2: Is a Qobj from QuTiP (has 'full' method)
             elif hasattr(item, 'full'):
-                print(f"  Tipo: Qobj")
-                print(f"  Valor:\n{item.full()}")
+                print(f"  Type: Qobj")
+                print(f"  Value:\n{np.round(item.full(),2)}")
                 
-            # Caso 3: É um array Numpy ou número
+            # Case 3: Is a Numpy array or number
             else:
-                print(f"  Tipo: {type(item)}")
-                print(f"  Valor:\n{item}")
-
-# Creation of measurement operators for optimization (PICOS variables)
-def create_operator_optimization(M1, M2, d, D, N, subsystem_target):
-    # Resulting matrix of PICOS expressions (for the joint system)
-    M = np.zeros((N, D), dtype=object)      
-    
-    x0 = 0
-    for beta0 in range(d): 
-        for beta0_ in range(d):
-            x1 = 0
-            for beta1 in range(d):
-                for beta1_ in range(d):
-                    
-                    # Logic to select the correct operator based on the loop indices
-                    term_1 = M1[0, beta0] 
-                    term_2 = M2[0, beta0_]
-                    
-                    # Check if terms are Qobj and convert them to numpy arrays if necessary
-                    # This is crucial because PICOS cannot multiply variables by Qobj directly
-                    if isinstance(term_2, qt.Qobj): term_2 = term_2.full()
-                    elif isinstance(term_1, qt.Qobj): term_1 = term_1.full()
-                    # print(M[0, x0])  # Debug: Check the structure of M[0, x0]
-                    term_1_b1 = M1[1, beta1]
-                    term_2_b1 = M2[1, beta1_]
-                    
-                    # Check if terms are Qobj and convert them to numpy arrays if necessary
-                    if isinstance(term_2_b1, qt.Qobj): term_2_b1 = term_2_b1.full()
-                    elif isinstance(term_1_b1, qt.Qobj): term_1_b1 = term_1_b1.full()
-                    
-                    if (subsystem_target == 1):
-                        # Tensor product for base 0 (beta)
-                        M[0, x0] = pc.kron(term_1, term_2)                    
-                        # Tensor product for base 1 (beta_)
-                        M[1, x1] = pc.kron(term_1_b1, term_2_b1)
-                    elif (subsystem_target == 2):
-                        M[0, x0] = pc.kron(term_2, term_1)                    
-                        M[1, x1] = pc.kron(term_2_b1, term_1_b1)
-
-                    # print(M[1, x1])  # Debug: Check the structure of M[1, x1]
-                    x1 += 1
-            x0 += 1
-    return M
+                print(f"  Type: {type(item)}")
+                print(f"  Value:\n{np.round(item,2)}")
