@@ -133,9 +133,6 @@ PHASE 2: Optimize Measurement 1 (M_opt), fixing State (SIGMA) and Measurement 2 
 
 '''Assuming local states -- no quantum correlations between subsystems'''
 def optimize_LocalMeasurements(M_fixed, sigma, fatorNormalizacao, d, D, N, subsystem_target):
-    """
-    PHASE 2: Optimize Measurement 1 (M_opt), fixing State (SIGMA) and Measurement 2 (M_fixed)
-    """
     M_opt = np.zeros((N, d), dtype=object)  # matrix that will be optimized 
     F = pc.Problem()
 

@@ -1,4 +1,3 @@
-
 import myPackages.creation as cs
 import myPackages.optimization as opt
 
@@ -22,20 +21,14 @@ def main():
     # PHASE 1: Optimize the states, assuming fixed measurements (Computational and Fourier basis)
     SIGMA, S = opt.optimize_NonLocalStates(sigma0, M, D, fatorNormalizacao, Pc)
     print("Success_Sigma_Opt_Phase1 = ",S) 
-
-    print(type(sigma0))
-    print(type(SIGMA))
-    print(type(M))
-    print(type(M1))
     
     #PHASE 2: Optimize Measurement 1 (M1), fixing State (SIGMA) and Measurement 2 (M2)
-    M_, M1_optimal_values, S1 = opt.optimize_LocalMeasurements(M2, SIGMA, fatorNormalizacao, d, D, N)
-    print(type(M1_optimal_values))
+    M_, M1_optimal_values, S1 = opt.optimize_LocalMeasurements(M2, SIGMA, fatorNormalizacao, d, D, N, 1)
     print("Success_Measure_Opt_Phase2 = ", S1)
 
+    print(M1_optimal_values)
     #PHASE 3: Optimize Measurement 2 (M2), fixing State (SIGMA) and Measurement 1 (M1_optimal)
-    M_final, M2_optimal_values, S2 = opt.optimize_LocalMeasurements(M1_optimal_values, SIGMA, fatorNormalizacao, d, D, N)
-    print(type(M_final))
+    M_final, M2_optimal_values, S2 = opt.optimize_LocalMeasurements(M1_optimal_values, SIGMA, fatorNormalizacao, d, D, N, 2)
     print("Success_Measure_Opt_Phase3 = ", S2)
 
 if __name__ == "__main__":
