@@ -1,7 +1,7 @@
 import picos as pc # Optimization lib
 import numpy as np # Standard math lib
 import qutip as qt # Quantum Mechanics Lib
-from myPackages.creation import create_operator_optimization
+from myPackages.creation import create_operator_optimization, inspect_matrix_elements
 
 '''
 PHASE 1: Optimize the states, assuming fixed measurements (Computational and Fourier basis)
@@ -80,7 +80,6 @@ def optimize_LocalStates(sigma_fixed, M, d, fatorNormalizacao, subsystem_target)
             if hasattr(fixed_part, 'full'): fixed_part = fixed_part.full()
             elif hasattr(fixed_part, 'value'): fixed_part = fixed_part.value
             fixed_part = np.array(fixed_part, dtype=complex) # ensure it's a numpy array
-            # print(f"Fixed part (before conversion): {np.round(fixed_part,3)}")  # Debug: Check the structure of fixed_part
 
             if subsystem_target == 1:
                 # Optimizing sigma0_1 (Variable), fixing sigma0_2 (Constant)
@@ -88,7 +87,7 @@ def optimize_LocalStates(sigma_fixed, M, d, fatorNormalizacao, subsystem_target)
                 sigma[x0][x1] = pc.kron(sigma_opt[idx_0][idx_1], pc.Constant(fixed_part))
             else:
                 # Optimizing sigma0_2 (Variable), fixing sigma0_1 (Constant)
-                # sigma = sigma0_1 (x) sigma0_2
+                # sigma = sigma0_2 (x) sigma0_1
                 sigma[x0][x1] = pc.kron(pc.Constant(fixed_part), sigma_opt[idx_0][idx_1])
 
             # Ensure M elements are numpy arrays for the trace calculation -- picos may not handle Qobj directly
@@ -133,6 +132,9 @@ PHASE 2: Optimize Measurement 1 (M_opt), fixing State (SIGMA) and Measurement 2 
 
 '''Assuming local states -- no quantum correlations between subsystems'''
 def optimize_LocalMeasurements(M_fixed, sigma, fatorNormalizacao, d, D, N, subsystem_target):
+    """
+    PHASE 2: Optimize Measurement 1 (M_opt), fixing State (SIGMA) and Measurement 2 (M_fixed)
+    """
     M_opt = np.zeros((N, d), dtype=object)  # matrix that will be optimized 
     F = pc.Problem()
 
@@ -146,12 +148,13 @@ def optimize_LocalMeasurements(M_fixed, sigma, fatorNormalizacao, d, D, N, subsy
         F.add_constraint(M_opt[1,i] >> 0)
 
     # Completeness Relation (Sum of projectors must be Identity)
-    F.add_constraint(sum(M_opt[0,i] for i in range(d)) == np.eye(d))
-    F.add_constraint(sum(M_opt[1,i] for i in range(d)) == np.eye(d))
+    # F.add_constraint(sum(M_opt[0,i] for i in range(d)) == np.eye(d))
+    # F.add_constraint(sum(M_opt[1,i] for i in range(d)) == np.eye(d))
+    F.add_constraint(sum(M_opt[0,i] for i in range(d)) - np.eye(d) << 1e-10*np.eye(d))
+    F.add_constraint(sum(M_opt[1,i] for i in range(d)) - np.eye(d) << 1e-10*np.eye(d))
 
     # Create joint operator (M_opt is Variable, M_fixed is Fixed from initialization)
     M_final = create_operator_optimization(M_opt, M_fixed, d, D, N, subsystem_target)
-
     # print("M_final:", M_final[0])  # Debug: Check the structure of M_final
     Success1 = 0 
 
