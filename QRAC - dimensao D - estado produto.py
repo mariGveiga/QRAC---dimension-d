@@ -27,12 +27,24 @@ def main():
     M1, M2, M = cs.createMeasurementOperators(d, D, Fourrier_basis, N)
     Pq = 1/2 *(1 + 1/np.sqrt(D)) # Quantum probability of success limit for d=2
     # see-saw algorithm
-    tolerance = 1e-4       # d=2 -- tolerance = 1e-6; d=3 -- tolerance = 1e-4
+    if d==2:
+        tolerance = 1e-6       # d=2 -- tolerance = 1e-6; d=3 -- tolerance = 1e-4
+    elif d==3:
+        tolerance = 1e-4
+    elif d==4:
+        tolerance = 1e-3
     t_max = 50
     
     St_inicial = 0
     M_fixed = M2
     sigma = sigma0
+        
+    # for i in range(d):
+    #     for j in range(d):
+    #         # Calculo dos traços de M_final[0, i] e M_final[1, j] para verificar se é = 1/D
+    #         tr_m = np.dot(M[0, i], M[1, j]).tr()
+            
+    #         print(f"Trace of M[0, {i}] and M[1, {j}]: {np.round(tr_m.real, 4)}")
     
     print(f"QRAC's with Local States and Local Measurements (d={d}):")
     print(f"Quantum Probability (ideal case): {np.round(Pq,3)}")
@@ -70,21 +82,16 @@ def main():
             rho (0,0) * sigma (1,0)
             rho (0,1) * sigma (1,1)
             '''
-            # for x in range(D):
-            #     tr_rho = np.trace(np.dot(sigma_final[0][x], sigma_final[1][x]))
-            #     print(f"Trace of sigma_final: {np.round(tr_rho.real, 2)}")
-            #     tr_m = np.trace(np.dot(M_final[0, x], M_final[1, x]))
-            #     print(f"Trace of M_final: {np.round(tr_m.real, 2)}")
-            
             for x0 in range(D):
                 for x1 in range(D):
+                    
                     # tr_rho = np.abs(np.vdot(sigma_final[0][x0], sigma_final[1][x1]))**2  # Inner product for density matrices
                     tr_rho = np.trace(np.dot(sigma_final[0][x0], sigma_final[1][x1]))
-                    print(f"  Trace of sigma_final[0][{x0}] and sigma_final[1][{x1}]: {np.round(tr_rho.real, 4)}")
+                    #print(f"  Trace of sigma_final[0][{x0}] and sigma_final[1][{x1}]: {np.round(tr_rho.real, 4)}")
 
                     # tr_M = np.abs(np.vdot(M_final[0][x0].value, M_final[1][x1].value))**2  # Inner product for density matrices
                     tr_M = np.trace(np.dot(M_final[0, x1].value, M_final[1, x1].value))
-                    # print(f"  Trace of M_final[0, {x1}] and M_final[1, {x1}]: {np.round(tr_M.real, 4)}")
+                    #print(f"  Trace of M_final[0, {x1}] and M_final[1, {x1}]: {np.round(tr_M.real, 4)}")
 
                     rho = qt.Qobj(sigma_final[x0][x1], dims=[[d,d], [d,d]])  # Convert to Qobj for qutip functions
                     rho_p = qt.ptrace(rho, 0)  # Partial trace over subsystem 1
@@ -99,8 +106,30 @@ def main():
                         print("The program was not able to converge to a local measurement operator.")
                         break
                         # x0=x1=D-1  # Break out of both loops if convergence is not to a local state
+                        
+            # Padronização dos resultados para facilitar a leitura e comparação no caso de d=2            
+            # cs.unify_matrix(sigma_final, D)
+            for i in range(N):
+                for j in range(D):
 
+                    # Verifica os traços individuais dos operadores de medida para verificar se estão normalizados
+                    print(f"Trace of matrices for x0={i} and x1={j}: {np.round(np.trace(M_final[i, j].value),3)}")
+
+            for i in range(N):
+
+                # Verifica se a soma dos operadores de medida é aproximadamente a identidade (com tolerância)
+                soma = sum(M_final[i,j] for j in range(D))
+                if ((soma - np.eye(D))<< 1e-10*np.eye(D)):
+                    print(f"Completeness relation holds for M_final[{i}]: Sum is approximately Identity.")
+            
+            for i in range(d):
+                for j in range(d):
+                    # Calculo dos traços de M_final[0, i] e M_final[1, j] para verificar se é = 1/D
+                    tr_m = np.trace(np.dot(M_final[0, i].value, M_final[1, j].value))
+                    
+                    print(f"Trace of M_final[0, {i}] and M_final[1, {j}]: {np.round(tr_m.real, 4)}")
             break
+
         
         M_fixed = M2_optimal_values
         sigma0_2 = sigma2_opt
