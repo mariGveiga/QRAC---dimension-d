@@ -132,9 +132,6 @@ PHASE 2: Optimize Measurement 1 (M_opt), fixing State (SIGMA) and Measurement 2 
 
 '''Assuming local states -- no quantum correlations between subsystems'''
 def optimize_LocalMeasurements(M_fixed, sigma, fatorNormalizacao, d, D, N, subsystem_target):
-    """
-    PHASE 2: Optimize Measurement 1 (M_opt), fixing State (SIGMA) and Measurement 2 (M_fixed)
-    """
     M_opt = np.zeros((N, d), dtype=object)  # matrix that will be optimized 
     F = pc.Problem()
 
@@ -148,15 +145,14 @@ def optimize_LocalMeasurements(M_fixed, sigma, fatorNormalizacao, d, D, N, subsy
         F.add_constraint(M_opt[1,i] >> 0)
 
     # Completeness Relation (Sum of projectors must be Identity)
-    # F.add_constraint(sum(M_opt[0,i] for i in range(d)) == np.eye(d))
-    # F.add_constraint(sum(M_opt[1,i] for i in range(d)) == np.eye(d))
     F.add_constraint(sum(M_opt[0,i] for i in range(d)) - np.eye(d) << 1e-10*np.eye(d))
     F.add_constraint(sum(M_opt[1,i] for i in range(d)) - np.eye(d) << 1e-10*np.eye(d))
 
     for i in range(N):
         for j in range(d):
-            # Normalization constraint for each measurement operator (trace = 1/d)
+            # Normalization constraint for each measurement operator
             F.add_constraint(pc.trace(M_opt[i,j]) == 1)
+
     # Create joint operator (M_opt is Variable, M_fixed is Fixed from initialization)
     M_final = create_operator_optimization(M_opt, M_fixed, d, D, N, subsystem_target)
     # print("M_final:", M_final[0])  # Debug: Check the structure of M_final
