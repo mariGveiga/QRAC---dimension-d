@@ -26,7 +26,6 @@ def main():
     M_, M1_optimal_values, S1 = opt.optimize_LocalMeasurements(M2, SIGMA, fatorNormalizacao, d, D, N, 1)
     print("Success_Measure_Opt_Phase2 = ", S1)
 
-    print(M1_optimal_values)
     #PHASE 3: Optimize Measurement 2 (M2), fixing State (SIGMA) and Measurement 1 (M1_optimal)
     M_final, M2_optimal_values, S2 = opt.optimize_LocalMeasurements(M1_optimal_values, SIGMA, fatorNormalizacao, d, D, N, 2)
     print("Success_Measure_Opt_Phase3 = ", S2)

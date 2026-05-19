@@ -136,9 +136,8 @@ def create_operator_optimization(M1, M2, d, D, N, subsystem_target):
                 term_2 = M2[x,beta_]
 
                 # Check if terms are Qobj and convert them to numpy arrays if necessary
-                # This is crucial because PICOS cannot multiply variables by Qobj directly
                 if isinstance(term_2, qt.Qobj): term_2 = term_2.full()
-                elif isinstance(term_1, qt.Qobj): term_1 = term_1.full()
+                if isinstance(term_1, qt.Qobj): term_1 = term_1.full()
                 
                 if subsystem_target == 1:
                     M[x,x_i] = pc.kron(term_1, term_2)  # Optimize subsystem 1
