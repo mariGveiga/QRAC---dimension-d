@@ -54,7 +54,6 @@ def optimize_NonLocalStates(sigma, M, D, fatorNormalizacao, Pc):
 
 '''Assuming local states -- no quantum correlations between subsystems'''
 
-
 def optimize_LocalStates(sigma_fixed, M, d, fatorNormalizacao, subsystem_target):
     D = d**2
     # Fix one of the states and optimize the other
@@ -62,21 +61,44 @@ def optimize_LocalStates(sigma_fixed, M, d, fatorNormalizacao, subsystem_target)
     Success=0     # Variable to store the sum of the success function    
     sigma_opt = [[None for _ in range(d)] for _ in range(d)]   # pure state to be optimized
     sigma = [[None for _ in range(D)] for _ in range(D)]   # joint state
+    
+    for i in range(d):
+        for j in range(d):
+            # State sigma that will be optimized
+            sigma_opt[i][j] = pc.HermitianVariable(f"sigma_opt_{i}_{j}", (d, d))
+            # Restriction for the variable to be a valid quantum state
+            F.add_constraint(sigma_opt[i][j] >> 0)      # Positive semidefinite
+            F.add_constraint(pc.trace(sigma_opt[i][j]) == 1)    # Trace 1
 
     for x0 in range(D):
-        idx_0 = x0 % d  # Map x0 to subsystem index
         for x1 in range(D):
-            idx_1 = x1 % d  # Map x1 to subsystem index
-            # State sigma that will be optimized
-            sigma_opt[idx_0][idx_1]=pc.HermitianVariable(f"sigma_opt_{x0}_{x1}", (d, d))
+            
+            # // d -- Most Significant Bit (MSB)
+            msb_0 = x0 // d
+            msb_1 = x1 // d
+            
+            # % d -- Least Significant Bit (LSB)
+            lsb_0 = x0 % d
+            lsb_1 = x1 % d
 
-            # Restriction for the variable to be a valid quantum state
-            F.add_constraint(sigma_opt[idx_0][idx_1]>>0)       # Positive semidefinite
-            F.add_constraint(pc.trace(sigma_opt[idx_0][idx_1]) == 1)   # Trace 1
+            # Direcionamento condicional baseado no alvo da otimização
+            if subsystem_target == 1:
+                # First qubit will be optmized. It gets the MSBs.
+                idx_0_var, idx_1_var = msb_0, msb_1
+                
+                # Second qubit is the constant. It gets the LSBs.
+                idx_0_fix, idx_1_fix = lsb_0, lsb_1
+                
+            elif subsystem_target == 2:
+                # First qubit will be optmized. It gets the MSBs.
+                idx_0_fix, idx_1_fix = msb_0, msb_1
+                
+                # Second qubit is the constant. It gets the LSBs.
+                idx_0_var, idx_1_var = lsb_0, lsb_1
 
             # Verifies if sigma_fixed elements are Qobj and converts to numpy if necessary
             # hasattr checks if the object has the attribute 'full'
-            fixed_part = sigma_fixed[idx_0][idx_1]
+            fixed_part = sigma_fixed[idx_0_fix][idx_1_fix]
             if hasattr(fixed_part, 'full'): fixed_part = fixed_part.full()
             elif hasattr(fixed_part, 'value'): fixed_part = fixed_part.value
             fixed_part = np.array(fixed_part, dtype=complex) # ensure it's a numpy array
@@ -84,11 +106,11 @@ def optimize_LocalStates(sigma_fixed, M, d, fatorNormalizacao, subsystem_target)
             if subsystem_target == 1:
                 # Optimizing sigma0_1 (Variable), fixing sigma0_2 (Constant)
                 # sigma = sigma0_1 (x) sigma0_2
-                sigma[x0][x1] = pc.kron(sigma_opt[idx_0][idx_1], pc.Constant(fixed_part))
+                sigma[x0][x1] = pc.kron(sigma_opt[idx_0_var][idx_1_var], pc.Constant(fixed_part))
             else:
                 # Optimizing sigma0_2 (Variable), fixing sigma0_1 (Constant)
                 # sigma = sigma0_2 (x) sigma0_1
-                sigma[x0][x1] = pc.kron(pc.Constant(fixed_part), sigma_opt[idx_0][idx_1])
+                sigma[x0][x1] = pc.kron(pc.Constant(fixed_part), sigma_opt[idx_0_var][idx_1_var])
 
             # Ensure M elements are numpy arrays for the trace calculation -- picos may not handle Qobj directly
             op_comp_val = M[0, x0]

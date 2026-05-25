@@ -132,18 +132,33 @@ def create_operator_optimization(M1, M2, d, D, N, subsystem_target):
         for beta in range(d):
             for beta_ in range(d):
                 
-                term_1 = M1[x,beta]
-                term_2 = M2[x,beta_]
-
-                # Check if terms are Qobj and convert them to numpy arrays if necessary
-                if isinstance(term_2, qt.Qobj): term_2 = term_2.full()
-                if isinstance(term_1, qt.Qobj): term_1 = term_1.full()
-                
                 if subsystem_target == 1:
-                    M[x,x_i] = pc.kron(term_1, term_2)  # Optimize subsystem 1
+                    term_1 = M1[x, beta]  
+                    term_2 = M2[x, beta_] 
                 elif subsystem_target == 2:
-                    M[x,x_i] = pc.kron(term_2, term_1)  # Optimize subsystem 2
-                x_i+=1
+                    term_1 = M2[x, beta] 
+                    term_2 = M1[x, beta_] 
+
+                # Tratamento de higiene de dados (QuTiP -> NumPy)
+                if isinstance(term_1, qt.Qobj): 
+                    term_1 = term_1.full()
+                if isinstance(term_2, qt.Qobj): 
+                    term_2 = term_2.full()
+                
+                M[x, x_i] = pc.kron(term_1, term_2)
+                x_i += 1
+                # term_1 = M1[x,beta]
+                # term_2 = M2[x,beta_]
+
+                # # Check if terms are Qobj and convert them to numpy arrays if necessary
+                # if isinstance(term_2, qt.Qobj): term_2 = term_2.full()
+                # if isinstance(term_1, qt.Qobj): term_1 = term_1.full()
+                
+                # if subsystem_target == 1:
+                #     M[x,x_i] = pc.kron(term_1, term_2)  # Optimize subsystem 1
+                # elif subsystem_target == 2:
+                #     M[x,x_i] = pc.kron(term_2, term_1)  # Optimize subsystem 2
+                # x_i+=1
     return M
 
 
