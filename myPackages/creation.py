@@ -36,7 +36,7 @@ def createNonLocalStates(d, D, hadamard_D, hadamard_d):
             
             # Normalization factor: <psi|psi> = tr(|psi><psi|)
             sigma0[x0][x1]=psi*psi.dag()/((psi*psi.dag()).tr())     
-            sigma0[x0][x1].dims = [[2, 2], [2, 2]]      # Divides the system into two parts (2 qubits)
+            sigma0[x0][x1].dims = [[d, d], [d, d]]      # Divides the system into two parts (2 qubits)
             
             # Constructing one of the MUBs for d=2 to form the Fourier basis using Hadamard of dimension 2
             ketx_f = qt.Qobj(hadamard_d[:, x1%2], dims=[[d], [1]]) 
@@ -124,7 +124,7 @@ def createMeasurementOperators(d, D, Fourrier_basis, N):
     return M1, M2, M
 
 # Creation of measurement operators for optimization (PICOS variables)
-def create_operator_optimization(M1, M2, d, D, N, subsystem_target):
+def create_operator_optimization(M_opt, M_fixed, d, D, N, subsystem_target):
     # Resulting matrix of PICOS expressions (for the joint system)
     M = np.zeros((N, D), dtype=object)      
     for x in range(N):
@@ -133,13 +133,13 @@ def create_operator_optimization(M1, M2, d, D, N, subsystem_target):
             for beta_ in range(d):
                 
                 if subsystem_target == 1:
-                    term_1 = M1[x, beta]  
-                    term_2 = M2[x, beta_] 
+                    term_1 = M_opt[x, beta]  
+                    term_2 = M_fixed[x, beta_] 
                 elif subsystem_target == 2:
-                    term_1 = M2[x, beta] 
-                    term_2 = M1[x, beta_] 
-
-                # Tratamento de higiene de dados (QuTiP -> NumPy)
+                    term_1 = M_fixed[x, beta] 
+                    term_2 = M_opt[x, beta_] 
+                
+                # Check if terms are Qobj and convert them to numpy arrays if necessary
                 if isinstance(term_1, qt.Qobj): 
                     term_1 = term_1.full()
                 if isinstance(term_2, qt.Qobj): 

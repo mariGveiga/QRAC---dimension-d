@@ -10,12 +10,13 @@ As dimensões não vão mais partir de d, mas sim de d1 e d2
 '''
 
 def main():
-    d=3        # Dimension of the beta subsystem (subsystem 1)
+    d=4        # Dimension of the beta subsystem 
     D=d**2     # Dimension of the set of letters x0x1 
 
     N=2                                 # Word size -- quantity of letters/bases
     fatorNormalizacao = 1/(N*D**2)      # Normalization factor for the success probability
     Pc = 0.5*(1 + 1/D)                  # Classical probability of success limit
+    Pq = 1/2 *(1 + 1/np.sqrt(D))        # Quantum probability of success limit 
 
     # hadamard_d = create_hadamard(D)
     hadamard_d2 = cs.create_hadamard(d)
@@ -25,28 +26,21 @@ def main():
 
     # ---- Creation of system measurement operators ----
     M1, M2, M = cs.createMeasurementOperators(d, D, Fourrier_basis, N)
-    Pq = 1/2 *(1 + 1/np.sqrt(D)) # Quantum probability of success limit for d=2
+    
     # see-saw algorithm
     if d==2:
-        tolerance = 1e-6       # d=2 -- tolerance = 1e-6; d=3 -- tolerance = 1e-4
+        tolerance = 1e-6       
     elif d==3:
         tolerance = 1e-4
-    elif d==4:
+    elif d >= 4:
         tolerance = 1e-3
     t_max = 50
     
     St_inicial = 0
     M_fixed = M2
     sigma = sigma0
-        
-    # for i in range(d):
-    #     for j in range(d):
-    #         # Calculo dos traços de M_final[0, i] e M_final[1, j] para verificar se é = 1/D
-    #         tr_m = np.dot(M[0, i], M[1, j]).tr()
             
-    #         print(f"Trace of M[0, {i}] and M[1, {j}]: {np.round(tr_m.real, 4)}")
-    
-    print(f"QRAC's with Local States and Local Measurements (d={d}):")
+    print(f"QRAC's with Local States and Local Measurements (d={d}) with Tolerance {tolerance}:")
     print(f"Quantum Probability (ideal case): {np.round(Pq,3)}")
     print(f"Classical Probability (ideal case): {np.round(Pc,3)}")
 
@@ -77,11 +71,6 @@ def main():
             # cs.inspect_matrix_elements(M2_optimal_values, N, d, "M2_optimal_values") 
             # cs.inspect_matrix_elements(M1_optimal_values, N, d, "M1_optimal_values")
 
-
-            '''
-            rho (0,0) * sigma (1,0)
-            rho (0,1) * sigma (1,1)
-            '''
             for x0 in range(D):
                 for x1 in range(D):
                     
@@ -107,8 +96,7 @@ def main():
                         break
                         # x0=x1=D-1  # Break out of both loops if convergence is not to a local state
                         
-            # Padronização dos resultados para facilitar a leitura e comparação no caso de d=2            
-            # cs.unify_matrix(sigma_final, D)
+            # Padronização dos resultados para facilitar a leitura e comparação no caso de d=2      
             for i in range(N):
                 for j in range(D):
 
@@ -130,7 +118,6 @@ def main():
                     print(f"Trace of M_final[0, {i}] and M_final[1, {j}]: {np.round(tr_m.real, 4)}")
             break
 
-        
         M_fixed = M2_optimal_values
         sigma0_2 = sigma2_opt
         sigma = sigma_final

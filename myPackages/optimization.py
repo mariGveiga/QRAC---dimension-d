@@ -170,10 +170,10 @@ def optimize_LocalMeasurements(M_fixed, sigma, fatorNormalizacao, d, D, N, subsy
     F.add_constraint(sum(M_opt[0,i] for i in range(d)) - np.eye(d) << 1e-10*np.eye(d))
     F.add_constraint(sum(M_opt[1,i] for i in range(d)) - np.eye(d) << 1e-10*np.eye(d))
 
-    for i in range(N):
-        for j in range(d):
-            # Normalization constraint for each measurement operator
-            F.add_constraint(pc.trace(M_opt[i,j]) == 1)
+    # for i in range(N):
+    #     for j in range(d):
+    #         # Normalization constraint for each measurement operator
+    #         F.add_constraint(pc.trace(M_opt[i,j]) == 1)
 
     # Create joint operator (M_opt is Variable, M_fixed is Fixed from initialization)
     M_final = create_operator_optimization(M_opt, M_fixed, d, D, N, subsystem_target)
@@ -188,7 +188,6 @@ def optimize_LocalMeasurements(M_fixed, sigma, fatorNormalizacao, d, D, N, subsy
                 sigma[x0][x1] = sigma[x0][x1].full()
 
             # M_final[0, x0] is the joint operator for answer x0
-
             term1 = pc.trace(M_final[0, x0] * sigma[x0][x1])
             term2 = pc.trace(M_final[1, x1] * sigma[x0][x1])
             
