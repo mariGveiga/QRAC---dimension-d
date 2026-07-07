@@ -18,18 +18,6 @@ This project focuses on the numerical optimization of **Quantum Random Access Co
 
 ---
 
-## 📂 Repository Structure
-
-*(Add a brief description of what each file in your project does here)*
-
-* `main.py` - [Brief description of what this does, e.g., Runs the main See-Saw loop]
-* `optimize_states.py` - [Brief description]
-* `optimize_measurements.py` - [Brief description]
-* `utils.py` - [Brief description]
-* `...` - [...]
-
----
-
 ## 🛠️ Technologies Used
 
 * **Python 3**
