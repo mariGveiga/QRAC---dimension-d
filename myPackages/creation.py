@@ -52,40 +52,47 @@ def createNonLocalStates(d, D, hadamard_D, hadamard_d):
     return sigma0, Comp_basis, Fourrier_basis
 
 # ------ LOCAL STATES ------
-def createLocalStates(d, D, hadamard_d):
+def createLocalStates(d1, d2, D, hadamard_d1, hadamard_d2):
     # Lists for first phase
     Comp_basis = [] # Computational basis
     Fourrier_basis = [] # Fourier basis
     sigma0 = np.zeros((D, D), dtype=object)
-    sigma0_1 = np.zeros((d, d), dtype=object)
-    sigma0_2 = np.zeros((d, d), dtype=object)
+    sigma0_1 = np.zeros((d1, d1), dtype=object)
+    sigma0_2 = np.zeros((d2, d2), dtype=object)
 
     for x0 in range(D):
 
-        idx_0 = x0 % d  # Map x0 to subsystem index
-        a = qt.basis(d,idx_0)*qt.basis(d,idx_0).dag() # 1st measurement operator -- |x_0><x_0|
+        # Map x0 to subsystem index
+        idx_0_1 = x0 % d1  
+        idx_0_2 = x0 % d2  
+
+        # 1st measurement operator -- |x_0><x_0|
+        a = qt.basis(d1,idx_0_1)*qt.basis(d1,idx_0_1).dag() 
         Comp_basis.append(a)
         
         for x1 in range(D):
             
-            idx_1 = x1 % d  # Map x1 to subsystem index
-            ketx=qt.Qobj(hadamard_d[:, idx_1]) # Constructing one of the Mutually Unbiased Bases (MUBs) vectors
-            b = ketx*ketx.dag()  # 2nd measurement operator -- |x_1><x_1|
+            # Map x1 to subsystem index
+            idx_1_1 = x1 % d1  
+            idx_1_2 = x1 % d2 
 
+            # Subsystem 1: Constructing one of the Mutually Unbiased Bases (MUBs) vectors
+            ketx_1 = qt.Qobj(hadamard_d1[:, idx_1_1])
             # Creating the initial pure state -- equal superposition of the two basis states
-            # Dividing Hilbert space in two qubits -- product states
-            psi=(ketx+qt.basis(d,idx_0)) #(x1+x0)/sqrt(2)
-            
-            psi = psi.unit()  # Normalization using .unit() method -- qutip built-in normalization
-            # Normalization factor: <psi|psi> = tr(|psi><psi|)
-            
-            sigma0_1[idx_0][idx_1]=psi*psi.dag()     
-            sigma0_2[idx_0][idx_1]=psi*psi.dag() 
-            sigma0[x0][x1]=qt.tensor(sigma0_1[idx_0][idx_1], sigma0_2[idx_0][idx_1])   
-            
+            psi_1 = (ketx_1 + qt.basis(d1, idx_0_1)).unit()
+            sigma0_1[idx_0_1][idx_1_1] = psi_1 * psi_1.dag() 
+
+            # Subsystem 2: Constructing one of the Mutually Unbiased Bases (MUBs) vectors
+            ketx_2 = qt.Qobj(hadamard_d2[:, idx_1_2])
+            psi_2 = (ketx_2 + qt.basis(d2, idx_0_2)).unit()
+            sigma0_2[idx_0_2][idx_1_2] = psi_2 * psi_2.dag()
+
+            # Creating the initial pure state for the joint system -- tensor product of the two subsystems
+            sigma0[x0][x1] = qt.tensor(sigma0_1[idx_0_1][idx_1_1], sigma0_2[idx_0_2][idx_1_2])   
+                        
             # Constructing one of the MUBs for d=2 to form the Fourier basis using Hadamard of dimension 2
             if x0 == 0:     # Forbids duplicates in the Fourier basis
-                ketx_f = qt.Qobj(hadamard_d[:, idx_1]) 
+                ketx_f = qt.Qobj(hadamard_d2[:, idx_1_2]) 
                 f = ketx_f * ketx_f.dag()
                 Fourrier_basis.append(f)      
 
@@ -95,24 +102,24 @@ def createLocalStates(d, D, hadamard_d):
 MEASUREMENT CREATION
 '''
 # Creation of system measurement operators
-def createMeasurementOperators(d, D, Fourrier_basis, N):
-    M1 = np.zeros((N, d), dtype=object)  
-    M2 = np.zeros((N, d), dtype=object)  
+def createMeasurementOperators(d1, d2, D, Fourrier_basis, N):
+    M1 = np.zeros((N, d1), dtype=object)  
+    M2 = np.zeros((N, d2), dtype=object)  
     M = np.zeros((N, D), dtype=object)
 
     x0=0
-    for beta0 in range(d): 
-        for beta0_ in range(d):
+    for beta0 in range(d1): 
+        for beta0_ in range(d2):
             x1=0
 
-            for beta1 in range(d):
-                for beta1_ in range(d):
+            for beta1 in range(d1):
+                for beta1_ in range(d2):
                     # --- M1 refers to beta (Subsystem 1) ---       
-                    M1[0,beta0] = qt.basis(d, beta0) * qt.basis(d, beta0).dag()   
+                    M1[0,beta0] = qt.basis(d1, beta0) * qt.basis(d1, beta0).dag()   
                     M1[1,beta1] = Fourrier_basis[beta1] 
                     
                     # --- M2 refers to beta_ (Subsystem 2) ---          
-                    M2[0,beta0_] = qt.basis(d, beta0_) * qt.basis(d, beta0_).dag()
+                    M2[0,beta0_] = qt.basis(d2, beta0_) * qt.basis(d2, beta0_).dag()
                     M2[1,beta1_] = Fourrier_basis[beta1_]
 
                     # --- Tensor product to form the composite system measurement operators ---
@@ -125,13 +132,13 @@ def createMeasurementOperators(d, D, Fourrier_basis, N):
     return M1, M2, M
 
 # Creation of measurement operators for optimization (PICOS variables)
-def create_operator_optimization(M_opt, M_fixed, d, D, N, subsystem_target):
+def createOperatorOptimization(M_opt, M_fixed, d1, d2, D, N, subsystem_target):
     # Resulting matrix of PICOS expressions (for the joint system)
     M = np.zeros((N, D), dtype=object)      
     for x in range(N):
         x_i = 0
-        for beta in range(d):
-            for beta_ in range(d):
+        for beta in range(d1):
+            for beta_ in range(d2):
                 
                 if subsystem_target == 1:
                     term_1 = M_opt[x, beta]  

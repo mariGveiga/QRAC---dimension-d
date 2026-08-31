@@ -23,7 +23,7 @@ def main():
     hadamard_d2 = cs.create_hadamard(d)
 
     # ---- Creation of Measurement Bases ----
-    sigma0, sigma0_1, sigma0_2, Comp_basis, Fourrier_basis = cs.createLocalStates(d, D, hadamard_d2)
+    sigma0, sigma0_1, sigma0_2, Comp_basis, Fourrier_basis = cs.createLocalStates(d, d, D, hadamard_d2, hadamard_d2)
 
     # ---- Creation of system measurement operators ----
     M1, M2, M = cs.createMeasurementOperators(d, D, Fourrier_basis, N)
