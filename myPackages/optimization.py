@@ -54,8 +54,7 @@ def optimize_NonLocalStates(sigma, M, D, fatorNormalizacao, Pc):
 
 '''Assuming local states -- no quantum correlations between subsystems'''
 
-def optimize_LocalStates(sigma_fixed, M, d, fatorNormalizacao, subsystem_target):
-    D = d**2
+def optimize_LocalStates(sigma_fixed, M, d, D, fatorNormalizacao, subsystem_target):
     # Fix one of the states and optimize the other
     F = pc.Problem() # Initiate first-phase solution
     Success=0     # Variable to store the sum of the success function    

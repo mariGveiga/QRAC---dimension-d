@@ -2,8 +2,8 @@ import picos as pc # Optimization lib
 import numpy as np # Standard math lib
 import qutip as qt # Quantum Mechanics Lib
 
-d1=3        # Dimension of the beta subsystem (subsystem 1)
-d2=3        # Dimension of the beta_ subsystem (subsystem 2)
+d1=2        # Dimension of the beta subsystem (subsystem 1)
+d2=2        # Dimension of the beta_ subsystem (subsystem 2)
 d=d1*d2     # Dimension of the set of letters x0x1 -- d = d1*d2
 
 N=2     # Word size -- quantity of letters/bases

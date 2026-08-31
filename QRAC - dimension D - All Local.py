@@ -10,13 +10,14 @@ As dimensões não vão mais partir de d, mas sim de d1 e d2
 '''
 
 def main():
-    d=4        # Dimension of the beta subsystem 
+    d=3        # Dimension of the beta subsystem 
     D=d**2     # Dimension of the set of letters x0x1 
 
     N=2                                 # Word size -- quantity of letters/bases
     fatorNormalizacao = 1/(N*D**2)      # Normalization factor for the success probability
     Pc = 0.5*(1 + 1/D)                  # Classical probability of success limit
-    Pq = 1/2 *(1 + 1/np.sqrt(D))        # Quantum probability of success limit 
+    Pq = 1/2 *(1 + 1/np.sqrt(D))        # Quantum probability of success limit 1
+    Pq_ideal = 1/4 *(1 + 1/np.sqrt(d))**2              # Quantum probability of success limit 2 (ideal case)
 
     # hadamard_d = create_hadamard(D)
     hadamard_d2 = cs.create_hadamard(d)
@@ -26,22 +27,22 @@ def main():
 
     # ---- Creation of system measurement operators ----
     M1, M2, M = cs.createMeasurementOperators(d, D, Fourrier_basis, N)
-    
+    print(M2)    
     # see-saw algorithm
-    if d==2:
-        tolerance = 1e-6       
-    elif d==3:
-        tolerance = 1e-4
-    elif d >= 4:
-        tolerance = 1e-3
-    t_max = 50
+    if d<4:
+        tolerance = 1e-8   
+    else:
+        tolerance = 1e-7
+    t_max = 200
     
     St_inicial = 0
     M_fixed = M2
     sigma = sigma0
+    sucess_history = []
             
     print(f"QRAC's with Local States and Local Measurements (d={d}) with Tolerance {tolerance}:")
     print(f"Quantum Probability (ideal case): {np.round(Pq,3)}")
+    print(f"Quantum Probability (ideal case): {np.round(Pq_ideal,3)}")
     print(f"Classical Probability (ideal case): {np.round(Pc,3)}")
 
     for t in range(t_max):
@@ -51,12 +52,13 @@ def main():
         M_final, M2_optimal_values, S1 = opt.optimize_LocalMeasurements(M1_optimal_values, sigma, fatorNormalizacao, d, D, N, 2)
         # M_final = M1_optimal_values (optimized) and M2_optimal_values (optimized) -- sigma fixo
 
-        sigma_inicial, sigma1_opt, S2 = opt.optimize_LocalStates(sigma0_2, M_final, d, fatorNormalizacao, 1)
+        sigma_inicial, sigma1_opt, S2 = opt.optimize_LocalStates(sigma0_2, M_final, d, D, fatorNormalizacao, 1)
         # sigma_inicial = sigma1_opt (optimized) and sigma0_2 (fixed)
 
-        sigma_final, sigma2_opt, S_final = opt.optimize_LocalStates(sigma1_opt, M_final, d, fatorNormalizacao, 2)
+        sigma_final, sigma2_opt, S_final = opt.optimize_LocalStates(sigma1_opt, M_final, d, D, fatorNormalizacao, 2)
         # sigma_final = sigma1_opt (optimized) and sigma2_opt (optimized)
 
+        sucess_history.append(S_final)
         print(f"Iteration {t+1}: Total Success = {S_final}")
         # S_final final da iteração t, otimizado em relação a M1, M2, sigma1 e sigma2
 
@@ -122,6 +124,7 @@ def main():
         sigma0_2 = sigma2_opt
         sigma = sigma_final
         St_inicial = S_final
+    # cs.create_graphic(sucess_history, Pc, Pq, Pq_ideal, d)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,7 @@
 import numpy as np # Standard math lib
 import qutip as qt # Quantum Mechanics Lib
 import picos as pc # Optimization lib
+import matplotlib.pyplot as plt # Graphing lib
 
 # ---- Creation of the Hadamard Matrix ----
 def create_hadamard(dim):
@@ -147,18 +148,6 @@ def create_operator_optimization(M_opt, M_fixed, d, D, N, subsystem_target):
                 
                 M[x, x_i] = pc.kron(term_1, term_2)
                 x_i += 1
-                # term_1 = M1[x,beta]
-                # term_2 = M2[x,beta_]
-
-                # # Check if terms are Qobj and convert them to numpy arrays if necessary
-                # if isinstance(term_2, qt.Qobj): term_2 = term_2.full()
-                # if isinstance(term_1, qt.Qobj): term_1 = term_1.full()
-                
-                # if subsystem_target == 1:
-                #     M[x,x_i] = pc.kron(term_1, term_2)  # Optimize subsystem 1
-                # elif subsystem_target == 2:
-                #     M[x,x_i] = pc.kron(term_2, term_1)  # Optimize subsystem 2
-                # x_i+=1
     return M
 
 
@@ -189,3 +178,42 @@ def inspect_matrix_elements(M, N, D, name):
             else:
                 print(f"  Type: {type(item)}")
                 print(f"  Value:\n{np.round(item,2)}")
+
+def create_graphic(sucess_history, Pc, Pq, Pq_ideal, d):
+    iteracoes_x = range(1, len(sucess_history) + 1)
+    plt.figure(figsize=(10, 6)) 
+
+    plt.plot(iteracoes_x, sucess_history, marker='o', linestyle='-', color='b', linewidth=2, label='Evolução da Otimização ($S_{final}$)')
+
+    plt.axhline(y=Pq, color='g', linestyle='--', linewidth=1.5, zorder=2, label=f'Limite Quântico ($P_q = {Pq:.3f}$)')
+    plt.axhline(y=Pq_ideal, color='m', linestyle='--', linewidth=1.5, zorder=2, label=f'Limite Ideal ($P_{{q,ideal}} = {Pq_ideal:.3f}$)')
+    plt.axhline(y=Pc, color='r', linestyle='--', linewidth=1.5, zorder=2, label=f'Limite Clássico ($P_c = {Pc:.3f}$)')
+
+    margem_y = 0.04
+    chao_y = min(sucess_history)
+    teto_y = max([max(sucess_history), Pq_ideal, Pq, Pc])
+    
+    escala_regular = np.arange(np.floor(chao_y/0.03)*0.03, np.ceil(teto_y/0.03)*0.03 + 0.01, 0.03)
+    
+    plt.yticks(escala_regular, [f"{val:.2f}" for val in escala_regular])
+    plt.ylim(chao_y - margem_y, teto_y + margem_y)
+
+    if d == 4 or len(sucess_history) > 20:
+        ticks_x = np.arange(5, len(sucess_history) + 1, 5)
+        ticks_x = np.concatenate(([1], ticks_x))
+        plt.xticks(ticks_x)
+    else:
+        plt.xticks(iteracoes_x) 
+
+    plt.tick_params(axis='both', which='major', labelsize=14)
+
+    plt.title(f'Convergência do Algoritmo See-Saw para QRAC ($d={d}$)', fontsize=20, fontweight='bold')
+    plt.xlabel('Número de Iterações', fontsize=16)
+    plt.ylabel('Probabilidade de Sucesso ($S_{final}$)', fontsize=16)
+    
+    plt.legend(loc='lower right', fontsize=18, framealpha=0.9)
+    plt.grid(True, linestyle=':', alpha=0.4)
+    
+    plt.tight_layout()
+    # plt.savefig(f'convergencia_qrac_d{d}_detalhado.png', dpi=300)
+    plt.show()
