@@ -1,7 +1,7 @@
 import picos as pc # Optimization lib
 import numpy as np # Standard math lib
 import qutip as qt # Quantum Mechanics Lib
-from myPackages.creation import create_operator_optimization, inspect_matrix_elements
+from myPackages.creation import createOperatorOptimization, inspect_matrix_elements
 
 '''
 PHASE 1: Optimize the states, assuming fixed measurements (Computational and Fourier basis)
@@ -54,7 +54,12 @@ def optimize_NonLocalStates(sigma, M, D, fatorNormalizacao, Pc):
 
 '''Assuming local states -- no quantum correlations between subsystems'''
 
-def optimize_LocalStates(sigma_fixed, M, d, D, fatorNormalizacao, subsystem_target):
+def optimize_LocalStates(sigma_fixed, M, d1, d2, D, fatorNormalizacao, subsystem_target):
+    if subsystem_target == 1:
+        d = d1
+    else:
+        d = d2
+
     # Fix one of the states and optimize the other
     F = pc.Problem() # Initiate first-phase solution
     Success=0     # Variable to store the sum of the success function    
@@ -73,12 +78,12 @@ def optimize_LocalStates(sigma_fixed, M, d, D, fatorNormalizacao, subsystem_targ
         for x1 in range(D):
             
             # // d -- Most Significant Bit (MSB)
-            msb_0 = x0 // d
-            msb_1 = x1 // d
+            msb_0 = x0 // d2
+            msb_1 = x1 // d2
             
             # % d -- Least Significant Bit (LSB)
-            lsb_0 = x0 % d
-            lsb_1 = x1 % d
+            lsb_0 = x0 % d2
+            lsb_1 = x1 % d2
 
             # Direcionamento condicional baseado no alvo da otimização
             if subsystem_target == 1:
@@ -152,7 +157,12 @@ PHASE 2: Optimize Measurement 1 (M_opt), fixing State (SIGMA) and Measurement 2 
 '''
 
 '''Assuming local states -- no quantum correlations between subsystems'''
-def optimize_LocalMeasurements(M_fixed, sigma, fatorNormalizacao, d, D, N, subsystem_target):
+def optimize_LocalMeasurements(M_fixed, sigma, fatorNormalizacao, d1, d2, D, N, subsystem_target):
+    if subsystem_target == 1:
+        d = d1
+    else:
+        d = d2
+
     M_opt = np.zeros((N, d), dtype=object)  # matrix that will be optimized 
     F = pc.Problem()
 
@@ -175,7 +185,7 @@ def optimize_LocalMeasurements(M_fixed, sigma, fatorNormalizacao, d, D, N, subsy
     #         F.add_constraint(pc.trace(M_opt[i,j]) == 1)
 
     # Create joint operator (M_opt is Variable, M_fixed is Fixed from initialization)
-    M_final = create_operator_optimization(M_opt, M_fixed, d, D, N, subsystem_target)
+    M_final = createOperatorOptimization(M_opt, M_fixed, d1, d2, D, N, subsystem_target)
     # print("M_final:", M_final[0])  # Debug: Check the structure of M_final
     Success1 = 0 
 
